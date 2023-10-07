@@ -1,0 +1,64 @@
+---
+title: "Project1"
+author: "TK"
+date: "2023-10-06"
+output: html_document
+---
+
+```{R}
+#Open needed libraries
+library(tidyverse)
+library(readr)
+
+#Get CSV files into tables and setting strings as factors
+beers = read.csv("https://raw.githubusercontent.com/tskunz/DDS6306_Project1/main/Beers.csv", header = TRUE, stringsAsFactors =  TRUE)
+breweries = read.csv("https://raw.githubusercontent.com/tskunz/DDS6306_Project1/main/Breweries.csv", header = TRUE, stringsAsFactors = TRUE)
+
+#setting ID columns to factors
+beers$Beer_ID = as.factor(beers$Beer_ID)
+beers$Brewery_id = as.factor(beers$Brewery_id)
+breweries$Brew_ID = as.factor(breweries$Brew_ID)
+
+#checking the data types of beers and breweries
+summary(beers)
+summary(breweries)
+
+#both columns have a column named "name", so making unique columns for each to better sort when joined
+beers = beers %>% rename(BeerName = Name, Brew_ID = Brewery_id)
+breweries = breweries %>% rename(BreweryName = Name)
+
+#Left Join the data to match by the brewery id
+beers_breweries = left_join(beers, breweries, by = "Brew_ID")
+beers_breweries
+```
+
+```{r}
+#Number of breweries in each state
+summary(breweries$State)
+
+breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+
+```
+
+
+```{r}
+#Checking for missing values
+sum(is.na(beers_breweries$ABV))
+sum(is.na(beers_breweries$IBU))
+missingABV = beers_breweries %>% filter(is.na(ABV))
+missingIBU = beers_breweries %>% filter(is.na(IBU))
+
+#getting a summary of the data with and without NA's
+summary(beers_breweries)
+summary(missingABV)
+summary(missingIBU)
+
+#visualizing of the missing data could be state related
+beers_breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+missingABV %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+missingIBU %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+```
