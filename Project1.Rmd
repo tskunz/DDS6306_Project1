@@ -46,6 +46,8 @@ breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count
 #Checking for missing values
 sum(is.na(beers_breweries$ABV))
 sum(is.na(beers_breweries$IBU))
+
+#Splitting out the NA data for ABV and IBU separately to allow us to investigate each instance
 missingABV = beers_breweries %>% filter(is.na(ABV))
 missingIBU = beers_breweries %>% filter(is.na(IBU))
 
