@@ -36,7 +36,8 @@ beers_breweries
 #Number of breweries in each state
 summary(breweries$State)
 
-breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+#using ..count.. for y as it will count the instances and allow for data lables
+breweries %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
 
 
 ```
@@ -57,10 +58,11 @@ summary(missingABV)
 summary(missingIBU)
 
 #visualizing of the missing data could be state related
-beers_breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
 
-missingABV %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+missingABV %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Missing ABV by State") + ylab("Count of Missing ABV") + ggthemes::theme_economist() + guides(fill = FALSE)
 
-missingIBU %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+missingIBU %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Missing IBU Data by State") + ylab("Count of Missing IBU") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+beers_breweries %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
 
 ```
