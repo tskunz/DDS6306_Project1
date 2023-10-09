@@ -65,4 +65,53 @@ missingIBU %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() 
 
 beers_breweries %>% ggplot(aes(x = State, y = ..count.., fill = State)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
 
+
+#visualizing missing data based on Beer Style
+
+missingABV %>% ggplot(aes(x = ..count.., y = Style, fill = Style)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Missing ABV by Style") + ylab("Count of Missing ABV") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+missingIBU %>% ggplot(aes(x = Style, y = ..count.., fill = Style)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Missing IBU Data by Style") + ylab("Count of Missing IBU") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+beers_breweries %>% ggplot(aes(x = ..count.., y = Style, fill = Style)) + geom_bar() + geom_text(aes(label = ..count..), stat = "count", vjust = -0.5, size = 3) + ggtitle("Count of Beer Style") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+summary(beers_breweries)
+beers_breweries %>% ggplot(aes(x = IBU, y = Style)) + geom_point()
+
+beers_breweries %>% ggplot(aes(x = IBU, y = ABV)) + geom_point()
+beers_breweries %>% ggplot(aes(x = IBU, y = ABV)) + geom_smooth()
+
+#nothing has an IBU of 0, could NA's really be 0's?
+check0 = beers_breweries %>% filter(IBU == 0)
+check0
+missingIBU
+#After looking up the menu of Bohemian Brewery - confirmed their website lists an IBU on both the Czech Pilsener and Vienna Lager
+
+#filtering data to look at the style "American Pale Ale"
+APA = beers_breweries %>% filter(Style == "American Pale Ale (APA)")
+summary(APA)
+summary(beers_breweries)
+APA %>% ggplot(aes(x = ABV)) + geom_histogram()
+APA %>% ggplot(aes(x = ABV, y = IBU)) + geom_point()
+APA %>% ggplot(aes(x = ABV, y = IBU)) + geom_smooth()
+
+summary(beers_breweries %>% filter(Style == "American IPA"))
+
+aipa = beers_breweries %>% filter(Style == "American IPA")
+aipa %>% ggplot(aes(x = ABV)) + geom_histogram()
+summary(aipa)
+
+#creating a field get the median ABV's by style, and not counting the NA's
+median_abv_by_style = beers_breweries %>% group_by(Style) %>% summarize(Median_ABV = median(ABV, na.rm = TRUE))
+
+#creating a field get the mean ABV's by style, and not counting the NA's
+mean_abv_by_style = beers_breweries %>% group_by(Style) %>% summarize(Mean_ABV = mean(ABV, na.rm = TRUE))
+median_abv_by_style
+mean_abv_by_style
+summary(beers_breweries$Style)
+
+#joining the median data into the combined data
+beers_breweries = beers_breweries %>% left_join(median_abv_by_style, by = "Style")
+
+#Replace missing ABV values with the abv median by style
+beers_breweries$ABV[is.na(beers_breweries$ABV)] = beers_breweries$Median_ABV
+summary(beers_breweries)
 ```
