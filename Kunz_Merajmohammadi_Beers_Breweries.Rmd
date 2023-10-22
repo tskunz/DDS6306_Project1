@@ -1,0 +1,488 @@
+---
+title: "Beers and Breweries EDA"
+author: "Mohammad Merajmohammadi and Trevor Kunz"
+date: "2023-10-06"
+last update: "2023-10-9"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(gridExtra)
+library(ggplot2)
+library(plotly)
+library(stats)
+library(caret)
+library(e1071)
+library(class)
+```
+
+
+## 1.	
+
+How many breweries are present in each state?
+Answer: Please refer to the graph below on the answer to this question. We can see the top 3 states with the most breweries is Colorado (47), California (39) and Michigan (32).
+
+```{r}
+
+beers = read.csv("https://github.com/EymanMeraj/DDS6306_Project1/raw/main/Beers.csv", header = TRUE, stringsAsFactors =  TRUE)
+breweries = read.csv("https://github.com/EymanMeraj/DDS6306_Project1/raw/main/Breweries.csv", header = TRUE, stringsAsFactors = TRUE)
+
+
+# Group data by state
+breweries_by_state <- breweries %>%
+  group_by(State) %>%
+  summarize(Count = n()) %>% # count how many breweries are present in each state
+  arrange(desc(Count)) # Sort the grouped data by Count
+
+breweries_by_state
+
+#breweries %>% ggplot(aes(x = State, fill = State)) + geom_bar() + ggtitle("Count of Breweries in Each State") + ylab("Count of Breweries") + ggthemes::theme_economist() + guides(fill = FALSE)
+
+#Create a bar plot to show the total number of breweries in each state
+breweries %>%
+  select(State)%>%
+  ggplot(aes(x=reorder(State,State,function(x)-length(x)), fill = State))+
+  geom_bar()+
+  ggtitle("Total Number of Breweries in Each State")+
+  xlab("Stat")+
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5) +
+  guides(fill = FALSE)
+
+
+```
+
+
+## 2.	
+
+Merge beer data with the breweries data. Print the first 6 observations and the last six observations to check the merged file.  (RMD only, this does not need to be included in the presentation or the deck.)
+
+```{r}
+
+beers = beers %>% rename(BeerName = Name, Brew_ID = Brewery_id)
+breweries = breweries %>% rename(BreweryName = Name)
+
+# Merge
+beers_breweries = left_join(beers, breweries, by = "Brew_ID")
+
+# First 6 obs
+head(beers_breweries, 6)
+
+# Last 6 obs
+tail(beers_breweries, 6)
+beers_breweries %>% ggplot(aes(x = ABV, y = IBU))+ geom_point()
+```
+
+## 3.	
+
+Address the missing values in each column
+answer: We can see that there are 62 missing values in ABV and 1005 missing values in IBU 
+
+```{r}
+# Check missing values in each column
+missing_values <- sapply(beers_breweries, function(x) sum(is.na(x)))
+
+#Set variable for the missing data
+missing_data = beers_breweries[is.na(beers_breweries$IBU), ]
+
+# Impute data with Linear Regression
+model = lm(IBU ~ ABV, data = beers_breweries)
+
+
+# Setting variables for intercepts and coefficient for ABV
+intercept = coef(model)["(Intercept)"]
+coef_abv = coef(model)["ABV"]
+
+# Calculate estimated IBU for missing data
+missing_data$Estimated_IBU = ifelse((intercept + coef_abv * missing_data$ABV) < 0, 0, round(intercept + coef_abv * missing_data$ABV))
+
+
+
+#calculating the values that are missing ABV and IBU data
+missing_abv = beers_breweries[is.na(beers_breweries$ABV),]
+nrow(missing_abv)/nrow(beers_breweries)
+#we have 2.57% of data missing both, data is MCAR, throwing out
+
+#Filling in the missing IBU data from the estimated values.
+beers_breweries$IBU[is.na(beers_breweries$IBU)] = missing_data$Estimated_IBU[is.na(missing_data$IBU)]
+
+#removing the missing ABV and IBU data as it is 2.57% of data and should cause minimal impact to the analysis
+beers_breweries = beers_breweries %>% filter(!is.na(beers_breweries$ABV))
+
+#print the summary and dataset
+summary(beers_breweries)
+beers_breweries
+```
+
+## 4.	
+
+Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare. 
+Answer - Washington DC and Kentuck have the Highest ABV at 6.25%
+Answer - Utah has the Lowest ABV at 4%
+Answer - Maine has the Highest IBU at 61
+Answer - Wisconsin has the Lowest IBU at 19
+
+```{r warning=FALSE}
+
+#Compute Median of ABV by State
+beers_breweries %>%
+  filter(!is.na(ABV))%>%
+  group_by(State)%>%
+  summarize(MedianABV = median(ABV))%>%
+  arrange(desc(MedianABV))%>%
+  print(n=50)
+
+#Compute Median of IBU by State
+beers_breweries %>%
+  filter(!is.na(IBU))%>%
+  group_by(State)%>%
+  summarize(MedianIBU = median(IBU))%>%
+  arrange(desc(MedianIBU))%>%
+  print(n=50)
+
+#Create bar chart of median ABV for each State
+beers_breweries %>%
+  filter(!is.na(ABV))%>%
+  group_by(State)%>%
+  summarize(MedianABV = median(ABV))%>%
+  ggplot(aes(x=reorder(State,-MedianABV), y = MedianABV, fill=State))+
+  geom_bar(stat="identity")+
+  xlab("State")+
+  ggtitle("Bar Chart Distribution of Median ABV by State") +
+  guides(fill = FALSE) +
+  geom_text(aes(label = MedianABV), vjust = -0.5, size = 3)
+  
+#Create bar chart of median IBU for each State
+beers_breweries %>%
+  filter(!is.na(IBU))%>%
+  group_by(State)%>%
+  summarize(MedianIBU = median(IBU))%>%
+  ggplot(aes(x=reorder(State,-MedianIBU), y = MedianIBU, fill=State))+
+  geom_bar(stat="identity")+
+  xlab("State")+
+  ggtitle("Bar Chart Distribution of Median IBU by State") +
+  guides(fill = FALSE) +
+  geom_text(aes(label = MedianIBU), vjust = -0.5, size = 3)
+
+```
+
+## 5.	
+
+Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?
+Answer - We have the maximum alcoholic beer in Boulder, Colorado. Which is the Lee Hill Series Vol. 5 - Belgian Style Quadrupel Ale @ 0.128ABV (NA IBU = 35)
+Answer - And the most bitter beer in Astoria, Oregon. Which is the Bitter Bitch Imperial IPA @ 138IBU
+
+```{r warning=FALSE}
+
+#Scatter Plot to compute highest ABV
+beers_breweries %>%
+  filter(!is.na(ABV))%>%
+  group_by(State)%>%
+  summarize(MaxABV = max(ABV))%>%
+  ggplot(aes(x=reorder(State,-MaxABV), y = MaxABV, color=State))+
+  geom_text(aes(label=State),hjust=0, vjust=0)+
+  geom_point()+
+  xlab("State")+
+  ggtitle("Scatter Plot of Max ABV by State")+
+  theme_gray() +
+  guides(fill = FALSE)
+
+  #using plotly to be able to hover over the plot
+#p=beers_breweries %>%
+#  filter(!is.na(ABV))%>%
+#  group_by(State)%>%
+#  summarize(MaxABV = max(ABV))%>%
+#  ggplot(aes(x=reorder(State,-MaxABV), y = MaxABV, color=State))+
+#  geom_text(aes(label=State),hjust=0, vjust=0)+
+#  geom_point()+
+#  xlab("State")+
+#  ggtitle("Scatter Plot of Max ABV by State")+
+#  theme_gray()
+#ggplotly(p)
+
+#What value is the MAX ABV for Colorado?
+coloradodf = beers_breweries %>% filter(State == " CO")
+coloradodf = coloradodf[order(coloradodf$ABV, decreasing=TRUE),]
+head(coloradodf,1)
+
+
+#Scatter Plot to compute highest IBU
+beers_breweries %>%
+  filter(!is.na(IBU))%>%
+  group_by(State)%>%
+  summarize(MaxIBU = max(IBU))%>%
+  ggplot(aes(x=reorder(State,-MaxIBU), y = MaxIBU, color=State))+
+  geom_text(aes(label=State),hjust=0, vjust=0)+
+  geom_point()+
+  xlab("State")+
+  ggtitle("Scatter Plot of Max IBU by State")+
+  theme_gray() +
+  guides(fill = FALSE)
+
+
+
+  #using plotly to be able to hover over the plot
+#p=beers_breweries %>%
+#  filter(!is.na(IBU))%>%
+#  group_by(State)%>%
+#  summarize(MaxIBU = max(IBU))%>%
+#  ggplot(aes(x=reorder(State,-MaxIBU), y = MaxIBU, color=State))+
+#  geom_text(aes(label=State),hjust=0, vjust=0)+
+#  geom_point()+
+#  xlab("State")+
+#  ggtitle("Scatter Plot of Max IBU by State")+
+#  theme_gray()
+#ggplotly(p)
+
+#What value is the MAX IBU for Oregon?
+oregondf = beers_breweries %>% filter(State == " OR")
+oregondf = oregondf[order(oregondf$IBU, decreasing=TRUE),]
+head(oregondf,1)
+```
+
+## 6.	
+
+Comment on the summary statistics and distribution of the ABV variable.
+Answer - we have a (slightly) right skewed histogram because the mean is greater than the median
+```{r}
+####summary(beers_breweries$ABV)
+beers_breweries%>%
+  filter(!is.na(ABV))%>%
+  summarize(MeanABV = mean(ABV), SDABV = sd(ABV), MedianABV = median(ABV), MaxABV = max(ABV), MinABV = min(ABV), Q1 = quantile(ABV,0.25), Q3 = quantile(ABV,0.75), Range = max(ABV)-min(ABV), count = n())
+
+ggplot(data = beers_breweries, aes(x = ABV)) +
+  geom_histogram(bins = 30, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of ABV",
+       x = "ABV",
+       y = "Frequency")
+
+boxplot(beers_breweries$ABV, main="Box Plot of ABV", ylab="Values")
+
+```
+
+
+## 7.	
+
+Is there an apparent relationship between the bitterness of the beer and its alcoholic content? Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
+
+ Answer - We can see a positive linear correlation (0.67) with IBU and ABV.
+ Answer - As the bitterness is higher, the ABV usually increases as well.
+ Answer - This makes sense since the higher percentage of alcohol will most likely make your drink more bitter
+
+```{r}
+
+#Question - Relationship between ABV and IBV(Bitterness)?
+beers_breweries %>%
+  filter(!is.na(ABV) & !is.na(IBU))%>%
+  ggplot(aes(x=IBU, y=ABV))+
+  geom_point()+
+  geom_smooth(method="lm", col = "blue")+ #adding a blue linera regression line (lm) to the plot
+  ggtitle("Relationship between IBU and ABV")
+
+# Correlation 
+beers_breweries_complete <- beers_breweries[complete.cases(beers_breweries),]
+cor(x = beers_breweries_complete$ABV, y = beers_breweries_complete$IBU)
+```
+
+## 8.	
+
+Budweiser would also like to investigate the difference with respect to IBU and ABV between IPAs (India Pale Ales) and other types of Ale (any beer with “Ale” in its name other than IPA).  You decide to use KNN classification to investigate this relationship.  Provide statistical evidence one way or the other. You can of course assume your audience is comfortable with percentages … KNN is very easy to understand conceptually. 
+In addition, while you have decided to use KNN to investigate this relationship (KNN is required) you may also feel free to supplement your response to this question with any other methods or techniques you have learned.  Creativity and alternative solutions are always encouraged.  
+
+```{r}
+#separating the Ales out of the data
+ales = beers_breweries[grepl("\\bale\\b", beers_breweries$Style, ignore.case = TRUE) | grepl("\\bale\\b", beers_breweries$BeerName, ignore.case = TRUE) | grepl("ipa", beers_breweries$Style, ignore.case = TRUE) | grepl("ipa", beers_breweries$BeerName, ignore.case = TRUE),]
+
+
+ales$IPA = grepl("IPA", ales$BeerName, ignore.case = TRUE) | grepl("IPA", ales$Style, ignore.case = TRUE)
+ales$IPA = as.factor(ales$IPA)
+
+#Iterating the model to explore the relationship between IPA and other ALES
+
+#setting a variable for the count of iterations
+iter = 100
+
+#variables to hold the results
+accnb = matrix(nrow = iter)
+acck5 = matrix(nrow = iter)
+acck15 = matrix(nrow = iter)
+sensnb = matrix(nrow = iter)
+sensk5 = matrix(nrow = iter)
+sensk15 = matrix(nrow = iter)
+specnb = matrix(nrow = iter)
+speck5 = matrix(nrow = iter)
+speck15 = matrix(nrow = iter)
+
+for (s in 1:iter){
+  #commenting out set seed first to see if I need to reset the seed each iteration
+    set.seed(s)
+    trainIndices = sample(seq(1:length(ales$ABV)),round(.7*length(ales$IBU)))
+    trainAles = ales[trainIndices,]
+    testAles = ales[-trainIndices,]
+    
+    
+    #naive bayes with Test and Train Data
+    #creating a naive bayes model to predict whether we have 
+    
+    model = naiveBayes(trainAles[,c("ABV", "IBU")],trainAles$IPA,laplace = .1)
+    #table(predict(model,testAles[,c("ABV", "IBU")],testAles$IPA, type = "raw"))
+    CM = confusionMatrix(table(predict(model,testAles[,c("ABV", "IBU")]), testAles$IPA))
+    accnb[s] = CM$overall[c("Accuracy")]
+    sensnb[s] = CM$byClass[c("Sensitivity")]
+    specnb[s] = CM$byClass[c("Specificity")]
+    
+    #KNN K = 5
+    classifyAles = knn(trainAles[,c("IBU","ABV")], testAles[,c("IBU","ABV")], trainAles$IPA, prob = TRUE, k = 5)
+    k5 = confusionMatrix(classifyAles, testAles$IPA)
+    
+    acck5[s] = k5$overall[c("Accuracy")]
+    sensk5[s] = k5$byClass[c("Sensitivity")]
+    speck5[s] = k5$byClass[c("Specificity")]
+    
+    #KNN K = 15
+    classifyAles = knn(trainAles[,c("IBU","ABV")], testAles[,c("IBU","ABV")], trainAles$IPA, prob = TRUE, k = 15)
+    k15 = confusionMatrix(classifyAles, testAles$IPA)
+    acck15[s] = k15$overall[c("Accuracy")]
+    sensk15[s] = k15$byClass[c("Sensitivity")]
+    speck15[s] = k15$byClass[c("Specificity")]
+}
+
+
+#calculate mean accuracy
+headers = c("Accuracy", "Sensitivity", "Specificity")
+nb = c(colMeans(accnb), colMeans(sensnb), colMeans(specnb))
+k5 = c(colMeans(acck5), colMeans(sensk5), colMeans(speck5))
+k15 = c(colMeans(acck15), colMeans(sensk15), colMeans(speck15))
+
+# Create the data frames
+df_nb <- data.frame(NBCategory = headers, Values = nb)
+df_k5 <- data.frame(K5Category = headers, Values = k5)
+df_k15 <- data.frame(K15Category = headers, Values = k15)
+df_nb
+df_k5
+df_k15
+
+#graphing IBU and ABV for Ales for IPA
+ales %>% ggplot(aes(x = ABV, y = IBU, color = IPA))+ geom_point() + ggtitle("Scatterplot of IPA's vs Non-IPA Ales")
+```
+
+```{r}
+#Distribution of style within TX, CA, CO. Choosing 3 with many breweries to test through KNN and NB
+
+TexasBB = beers_breweries %>% filter(str_trim(State) == "TX")
+CaliforniaBB = beers_breweries %>% filter(str_trim(State) == "CA")
+ColoradoBB = beers_breweries %>% filter(str_trim(State) == "CO")
+summary(beers_breweries$State)
+
+#adding columns in BB for TX, CA, CO, SD and not each of those states
+beers_breweries = beers_breweries %>% mutate(TX = ifelse(grepl("TX", str_trim(State), ignore.case = TRUE), "Y", "N")) %>% mutate(TX = factor(TX, levels = c("Y", "N")))
+
+beers_breweries = beers_breweries %>% mutate(CA = ifelse(grepl("CA", str_trim(State), ignore.case = TRUE), "Y", "N")) %>% mutate(CA = factor(CA, levels = c("Y", "N")))
+
+beers_breweries = beers_breweries %>% mutate(CO = ifelse(grepl("CO", str_trim(State), ignore.case = TRUE), "Y", "N")) %>% mutate(CO = factor(CO, levels = c("Y", "N")))
+
+beers_breweries = beers_breweries %>% mutate(SD = ifelse(grepl("SD", str_trim(State), ignore.case = TRUE), "Y", "N")) %>% mutate(SD = factor(SD, levels = c("Y", "N")))
+
+
+beers_breweries
+```
+
+9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
+
+```{r}
+#9 KNN and NB to see whether predict whether drinks are similar to ones in other markets
+
+#trimming State in BB dataset
+beers_breweries$State = str_trim(beers_breweries$State)
+beers_breweries$BeerName = as.character(beers_breweries$BeerName)
+#setting a variable for the count of iterations
+iter = 100
+
+#variables to hold the results
+TXFP = list()
+CAFP = list()
+COFP = list()
+SDFP = list()
+
+#iterate through 100 iterations
+for (s in 1:iter) {
+  set.seed(s)
+  trainIndices = sample(seq(1:length(beers_breweries$ABV)), round(0.7 * length(beers_breweries$IBU)))
+  trainStates = beers_breweries[trainIndices,]
+  testStates = beers_breweries[-trainIndices,]
+
+  # KNN K = 3
+  classifyStates = knn(trainStates[, c("IBU", "ABV")], testStates[, c("IBU", "ABV")], trainStates$TX, prob = TRUE, k = 3)
+  kTX = confusionMatrix(classifyStates, testStates$TX)
+
+  #captures indices of Y in the model table and the test set
+  L1 = grep("Y", classifyStates)
+  L2 = grep("Y", testStates$TX)
+  # Create a list of indices in L1 that are not in L2
+  FP = list(setdiff(L1, L2))
+  
+  #save False Positives to TXFP
+  for (i in FP) {
+  TXFP[[s]] = (testStates$BeerName[i])
+  }
+
+  #KNN for CA Data
+  classifyStates = knn(trainStates[, c("IBU", "ABV")], testStates[, c("IBU", "ABV")], trainStates$CA, prob = TRUE, k = 3)
+  kCA = confusionMatrix(classifyStates, testStates$CA)
+
+  #captures indices of Y in the model table and the test set
+  L1 = grep("Y", classifyStates)
+  L2 = grep("Y", testStates$CA)
+  # Create a list of indices in L1 that are not in L2
+  FP = list(setdiff(L1, L2))
+    
+  #save False Positives to CAFP
+  for (i in FP) {
+  CAFP[[s]] = (testStates$BeerName[i])
+    }
+
+  #KNN for CO data
+  classifyStates = knn(trainStates[, c("IBU", "ABV")], testStates[, c("IBU", "ABV")], trainStates$CO, prob = TRUE, k = 3)
+  kCO = confusionMatrix(classifyStates, testStates$CO)
+  
+  #captures indices of Y in the model table and the test set
+  L1 = grep("Y", classifyStates)
+  L2 = grep("Y", testStates$CO)
+  # Create a list of indices in L1 that are not in L2
+  FP = list(setdiff(L1, L2))
+    
+  #save False Positives to COFP
+  for (i in FP) {
+  COFP[[s]] = (testStates$BeerName[i])
+    }
+  
+}
+
+#List out the false positives into a data frame
+TXFP = unlist(TXFP)
+TXTable = as.data.frame(table(TXFP))
+TXTableR = TXTable %>% filter(Freq >= 10)
+
+#List out the false positives into a data frame
+CAFP = unlist(CAFP)
+CATable = as.data.frame(table(CAFP))
+CATableR = CATable %>% filter(Freq >= 10)
+
+#List out the false positives into a data frame
+COFP = unlist(COFP)
+COTable = as.data.frame(table(COFP))
+COTableR = COTable %>% filter(Freq >= 10)
+
+TXTableR %>% ggplot(aes(x = TXFP, y = Freq, fill = "orange")) + geom_bar(stat = "identity") + ggtitle("Texas False Positive Drinks") + xlab("Drink") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + guides(fill = FALSE) + geom_text(aes(label = Freq), vjust = -0.5, size = 3)
+
+CATableR %>% ggplot(aes(x = CAFP, y = Freq, fill = "orange")) + geom_bar(stat = "identity") + ggtitle("California False Positive Drinks") + xlab("Drink") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + guides(fill = FALSE) + geom_text(aes(label = Freq), vjust = -0.5, size = 3)
+
+COTableR %>% ggplot(aes(x = COFP, y = Freq, fill = "orange")) + geom_bar(stat = "identity") + ggtitle("Colorado False Positive Drinks") + xlab("Drink") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + guides(fill = FALSE) + geom_text(aes(label = Freq), vjust = -0.5, size = 3)
+
+```
