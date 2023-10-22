@@ -82,7 +82,10 @@ beers_breweries %>% ggplot(aes(x = ABV, y = IBU))+ geom_point()
 ## 3.	
 
 Address the missing values in each column
-answer: We can see that there are 62 missing values in ABV and 1005 missing values in IBU 
+answer: We can see that there are 62 missing values in ABV and 1005 missing values in IBU
+Data is missing completely at random
+Missing data was imputed for IBU with Linear Regression as we found a linear relationship between ABV and IBU
+Missing Data for ABV was missing IBU as well and represented 2.57% of the data, therefore it was removed
 
 ```{r}
 # Check missing values in each column
@@ -123,10 +126,10 @@ beers_breweries
 ## 4.	
 
 Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare. 
-Answer - Washington DC and Kentuck have the Highest ABV at 6.25%
+Answer - Washington DC and Kentucky have the Highest ABV at 6.25%
 Answer - Utah has the Lowest ABV at 4%
-Answer - Maine has the Highest IBU at 61
-Answer - Wisconsin has the Lowest IBU at 19
+Answer - West Virginia has the Highest IBU at 57.5
+Answer - Wisconsin has the Lowest IBU at 22
 
 ```{r warning=FALSE}
 
@@ -249,7 +252,7 @@ head(oregondf,1)
 ## 6.	
 
 Comment on the summary statistics and distribution of the ABV variable.
-Answer - we have a (slightly) right skewed histogram because the mean is greater than the median
+Answer - we have a right skewed distribution because the mean is greater than the median, meaning the outliers are likely to be far greater than the median.
 ```{r}
 ####summary(beers_breweries$ABV)
 beers_breweries%>%
@@ -271,8 +274,8 @@ boxplot(beers_breweries$ABV, main="Box Plot of ABV", ylab="Values")
 
 Is there an apparent relationship between the bitterness of the beer and its alcoholic content? Draw a scatter plot.  Make your best judgment of a relationship and EXPLAIN your answer.
 
- Answer - We can see a positive linear correlation (0.67) with IBU and ABV.
- Answer - As the bitterness is higher, the ABV usually increases as well.
+ Answer - We can see a positive linear correlation (0.7673) with IBU and ABV.
+ Answer - As the bitterness is higher, the ABV tends to increases as well.
  Answer - This makes sense since the higher percentage of alcohol will most likely make your drink more bitter
 
 ```{r}
@@ -294,6 +297,12 @@ cor(x = beers_breweries_complete$ABV, y = beers_breweries_complete$IBU)
 
 Budweiser would also like to investigate the difference with respect to IBU and ABV between IPAs (India Pale Ales) and other types of Ale (any beer with “Ale” in its name other than IPA).  You decide to use KNN classification to investigate this relationship.  Provide statistical evidence one way or the other. You can of course assume your audience is comfortable with percentages … KNN is very easy to understand conceptually. 
 In addition, while you have decided to use KNN to investigate this relationship (KNN is required) you may also feel free to supplement your response to this question with any other methods or techniques you have learned.  Creativity and alternative solutions are always encouraged.  
+
+KNN K = 5, 15 and Naive Bayes were used to help us better understand this relationship between IPA and other ales.
+80.6% Accuracy with a Naïve Bayes Model
+82.0% Accuracy relative to 5 nearest neighbors
+80.0% Accuracy relative to 15 nearest neighbors
+
 
 ```{r}
 #separating the Ales out of the data
@@ -394,6 +403,8 @@ beers_breweries
 ```
 
 9.	Knock their socks off!  Find one other useful inference from the data that you feel Budweiser may be able to find value in.  You must convince them why it is important and back up your conviction with appropriate statistical evidence. 
+
+By using KNN K = 3 we explored which beers are most likely to be mistaken for beer belonging to another State. The False positives in this analysis could help identify market opportunities to move products between states to help gain more market share.
 
 ```{r}
 #9 KNN and NB to see whether predict whether drinks are similar to ones in other markets
