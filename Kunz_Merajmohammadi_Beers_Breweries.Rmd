@@ -497,3 +497,7 @@ CATableR %>% ggplot(aes(x = CAFP, y = Freq, fill = "orange")) + geom_bar(stat = 
 COTableR %>% ggplot(aes(x = COFP, y = Freq, fill = "orange")) + geom_bar(stat = "identity") + ggtitle("Colorado False Positive Drinks") + xlab("Drink") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + guides(fill = FALSE) + geom_text(aes(label = Freq), vjust = -0.5, size = 3)
 
 ```
+
+Conclusion:
+Based on this analysis and classifications, we recommend introducing Dale's Pale Ale into the Colorado Market, Tin Roof Watermelon Wheat into the Texas Market, and 1327 Pod's ESB into California's market. As these beers fit the customer preferences of ABV and IBU within each of the given states based on the data from our predictions.
+
